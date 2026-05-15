@@ -19,137 +19,247 @@ class HomeScreen extends ConsumerWidget {
       error: (e, _) => PermissionScreen(error: e.toString()),
       data: (granted) {
         if (!granted) return const PermissionScreen();
-        return const _FileListView();
+        return const _HomeScaffold();
       },
     );
   }
 }
 
-class _FileListView extends ConsumerWidget {
-  const _FileListView();
+class _HomeScaffold extends ConsumerStatefulWidget {
+  const _HomeScaffold();
+  @override
+  ConsumerState<_HomeScaffold> createState() => _HomeScaffoldState();
+}
+
+class _HomeScaffoldState extends ConsumerState<_HomeScaffold> {
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final filesAsync = ref.watch(allFilesProvider);
-    final selectedCat = ref.watch(selectedCategoryProvider);
+    final filteredFiles = ref.watch(filteredFilesProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ArkioViewer', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(allFilesProvider);
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 180,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              title: _isSearching 
+                ? null 
+                : const Text('ArkioViewer', style: TextStyle(fontWeight: FontWeight.bold)),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.tertiary,
+                    ],
+                  ),
+                ),
+                child: const Stack(
+                  children: [
+                    Positioned(
+                      right: -20,
+                      bottom: -20,
+                      child: Icon(Icons.folder_copy, size: 150, color: Colors.white10),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              if (!_isSearching)
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () => setState(() => _isSearching = true),
+                ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () => ref.invalidate(allFilesProvider),
+              ),
+            ],
+            bottom: _isSearching ? PreferredSize(
+              preferredSize: const Size.fromHeight(60),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Search files...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = false;
+                          _searchController.clear();
+                          ref.read(searchQueryProvider.notifier).state = '';
+                        });
+                      },
+                    ),
+                    filled: true,
+                    fillColor: Colors.black26,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onChanged: (val) => ref.read(searchQueryProvider.notifier).state = val,
+                ),
+              ),
+            ) : null,
+          ),
+          
+          if (!_isSearching)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Categories', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    _CategoryGrid(),
+                    const SizedBox(height: 24),
+                    Text('Recent Files', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+
+          filesAsync.when(
+            loading: () => const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              child: Center(child: Text('Error: $e')),
+            ),
+            data: (_) {
+              if (filteredFiles.isEmpty) {
+                return const SliverFillRemaining(
+                  child: Center(child: Text('No files found')),
+                );
+              }
+              return SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final file = filteredFiles[index];
+                    return _FileListItem(file: file);
+                  },
+                  childCount: filteredFiles.length,
+                ),
+              );
             },
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50),
-          child: _CategoryFilter(),
+      ),
+    );
+  }
+}
+
+class _CategoryGrid extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedCategoryProvider);
+    final categories = FileCategory.values;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: categories.length,
+      itemBuilder: (context, i) {
+        final cat = categories[i];
+        final isSelected = selected == cat;
+        return InkWell(
+          onTap: () => ref.read(selectedCategoryProvider.notifier).state = isSelected ? null : cat,
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              color: isSelected ? Theme.of(context).colorScheme.primaryContainer : Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(FileTypeDetector.iconFor(cat), style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 4),
+                Text(
+                  cat.name.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FileListItem extends StatelessWidget {
+  final FileItem file;
+  const _FileListItem({required this.file});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          FileTypeDetector.iconFor(file.category),
+          style: const TextStyle(fontSize: 24),
         ),
       ),
-      body: filesAsync.when(
-        loading: () => const Center(child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Scanning your files...'),
-          ],
-        )),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (files) {
-          final filtered = selectedCat == null
-              ? files
-              : files.where((f) => f.category == selectedCat).toList();
-          
-          if (filtered.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('No files found'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => ref.invalidate(allFilesProvider),
-                    child: const Text('Refresh Scan'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Showing ${filtered.length} files',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final file = filtered[index];
-                    return ListTile(
-                      leading: Text(
-                        FileTypeDetector.iconFor(file.category),
-                        style: const TextStyle(fontSize: 28),
-                      ),
-                      title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text(
-                        '${file.sizeFormatted} • ${_formatDate(file.modified)}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ViewerScreen(filePath: file.path)),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        },
+      title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        '${file.sizeFormatted} • ${_formatDate(file.modified)}',
+        style: const TextStyle(fontSize: 12, color: Colors.white54),
+      ),
+      trailing: const Icon(Icons.chevron_right, size: 16, color: Colors.white24),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ViewerScreen(filePath: file.path)),
       ),
     );
   }
 
   String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    if (dt.day == now.day && dt.month == now.month && dt.year == now.year) {
+      return 'Today';
+    }
     return '${dt.day}/${dt.month}/${dt.year}';
-  }
-}
-
-class _CategoryFilter extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(selectedCategoryProvider);
-    final categories = [null, ...FileCategory.values];
-    
-    return SizedBox(
-      height: 50,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        itemCount: categories.length,
-        itemBuilder: (context, i) {
-          final cat = categories[i];
-          final isSelected = selected == cat;
-          final label = cat == null ? 'All' : cat.name.toUpperCase();
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(label),
-              selected: isSelected,
-              onSelected: (_) => ref.read(selectedCategoryProvider.notifier).state = cat,
-            ),
-          );
-        },
-      ),
-    );
   }
 }

@@ -6,11 +6,30 @@ import '../utils/file_type_detector.dart';
 import 'permission_provider.dart';
 
 final selectedCategoryProvider = StateProvider<FileCategory?>((ref) => null);
+final searchQueryProvider = StateProvider<String>((ref) => '');
 
 final allFilesProvider = FutureProvider<List<FileItem>>((ref) async {
   final granted = await ref.watch(permissionProvider.future);
   if (!granted) return [];
+  // Use ref.state to cache or check if already scanning
   return _scanDevice();
+});
+
+final filteredFilesProvider = Provider<List<FileItem>>((ref) {
+  final filesAsync = ref.watch(allFilesProvider);
+  final category = ref.watch(selectedCategoryProvider);
+  final query = ref.watch(searchQueryProvider).toLowerCase();
+
+  return filesAsync.maybeWhen(
+    data: (files) {
+      return files.where((file) {
+        final matchesCategory = category == null || file.category == category;
+        final matchesQuery = query.isEmpty || file.name.toLowerCase().contains(query);
+        return matchesCategory && matchesQuery;
+      }).toList();
+    },
+    orElse: () => [],
+  );
 });
 
 Future<List<FileItem>> _scanDevice() async {
