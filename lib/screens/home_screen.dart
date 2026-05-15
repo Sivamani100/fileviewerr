@@ -252,8 +252,81 @@ class _FileListItem extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (_) => ViewerScreen(filePath: file.path)),
       ),
+      onLongPress: () => _showDetails(context),
     );
   }
+
+  void _showDetails(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(FileTypeDetector.iconFor(file.category), style: const TextStyle(fontSize: 32)),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(file.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(file.category.name.toUpperCase(), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 32),
+            _DetailRow(Icons.description, 'Extension', file.extension.isEmpty ? 'None' : file.extension),
+            _DetailRow(Icons.straighten, 'Size', file.sizeFormatted),
+            _DetailRow(Icons.calendar_today, 'Modified', file.modified.toString().split('.').first),
+            _DetailRow(Icons.folder, 'Path', file.path),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.check),
+                label: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _DetailRow(this.icon, this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.white54),
+          const SizedBox(width: 12),
+          SizedBox(width: 80, child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13))),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+        ],
+      ),
+    );
+  }
+}
 
   String _formatDate(DateTime dt) {
     final now = DateTime.now();
