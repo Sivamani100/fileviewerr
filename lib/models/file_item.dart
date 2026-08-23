@@ -28,10 +28,12 @@ enum FileCategory {
   image,
   video,
   audio,
+  word,
+  excel,
+  powerpoint,
   text,
   code,
-  office,   // docx, xlsx, pptx
-  archive,  // zip, rar, 7z, tar
+  archive,
   ebook,
   unknown,
 }

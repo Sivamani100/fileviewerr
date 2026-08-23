@@ -128,24 +128,63 @@ class _CategoryFilter extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedCategoryProvider);
-    final categories = [null, ...FileCategory.values];
     
-    return SizedBox(
-      height: 50,
+    // Ordered as per user request + others
+    final categories = [
+      null, 
+      FileCategory.pdf, 
+      FileCategory.image, 
+      FileCategory.video, 
+      FileCategory.audio,
+      FileCategory.word,
+      FileCategory.excel,
+      FileCategory.powerpoint,
+      FileCategory.text,
+      FileCategory.archive,
+    ];
+    
+    return Container(
+      height: 60,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+      ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         itemCount: categories.length,
         itemBuilder: (context, i) {
           final cat = categories[i];
           final isSelected = selected == cat;
           final label = cat == null ? 'All' : cat.name.toUpperCase();
+          final icon = cat == null ? '🏠' : FileTypeDetector.iconFor(cat);
+
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(label),
-              selected: isSelected,
-              onSelected: (_) => ref.read(selectedCategoryProvider.notifier).state = cat,
+            padding: const EdgeInsets.only(right: 10),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              child: FilterChip(
+                showCheckmark: false,
+                avatar: Text(icon, style: const TextStyle(fontSize: 16)),
+                label: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Colors.white : Colors.white70,
+                  ),
+                ),
+                selected: isSelected,
+                selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                backgroundColor: Colors.white.withOpacity(0.05),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                  ),
+                ),
+                onSelected: (_) => ref.read(selectedCategoryProvider.notifier).state = cat,
+              ),
             ),
           );
         },

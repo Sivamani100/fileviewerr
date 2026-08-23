@@ -10,14 +10,25 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
+import com.arkio.officeengine.ArkioOfficeEngine
+import kotlinx.coroutines.*
+
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "arkio_viewer/intent"
+    private val ENGINE_CHANNEL = "arkio_viewer/office_engine"
     private var initialFilePath: String? = null
     private var methodChannel: MethodChannel? = null
+    private val engine by lazy { ArkioOfficeEngine(this) }
+    private val activityScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        activityScope.cancel()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -58,7 +69,6 @@ class MainActivity : FlutterActivity() {
         return when (uri.scheme) {
             "file" -> uri.path
             "content" -> {
-                // Copy content URI to cache for access
                 try {
                     val fileName = getFileName(uri) ?: "temp_file"
                     val cacheFile = File(cacheDir, fileName)
@@ -90,6 +100,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        // Intent Channel
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel!!.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -98,6 +110,32 @@ class MainActivity : FlutterActivity() {
                     initialFilePath = null
                 }
                 else -> result.notImplemented()
+            }
+        }
+
+        // Office Engine Channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ENGINE_CHANNEL).setMethodCallHandler { call, result ->
+            if (call.method == "convertToPdf") {
+                val path = call.argument<String>("filePath")
+                if (path == null) {
+                    result.error("INVALID_ARGUMENT", "File path is null", null)
+                    return@setMethodCallHandler
+                }
+
+                activityScope.launch {
+                    val conversionResult = engine.convertToPdf(path)
+                    if (conversionResult.success) {
+                        result.success(mapOf(
+                            "success" to true,
+                            "pdfPath" to conversionResult.outputPdfPath,
+                            "pageCount" to conversionResult.pageCount
+                        ))
+                    } else {
+                        result.error("CONVERSION_FAILED", conversionResult.error?.message ?: "Unknown error", null)
+                    }
+                }
+            } else {
+                result.notImplemented()
             }
         }
     }

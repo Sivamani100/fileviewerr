@@ -49,7 +49,9 @@ class ViewerScreen extends StatelessWidget {
       case FileCategory.text:
       case FileCategory.code:
         return ArkioTextViewer(filePath: filePath, ext: ext);
-      case FileCategory.office:
+      case FileCategory.word:
+      case FileCategory.excel:
+      case FileCategory.powerpoint:
         return ArkioOfficeViewer(filePath: filePath, ext: ext);
       case FileCategory.archive:
         return ArkioArchiveViewer(filePath: filePath);

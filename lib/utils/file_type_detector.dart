@@ -8,7 +8,9 @@ class FileTypeDetector {
     if (_imageExts.contains(ext)) return FileCategory.image;
     if (_videoExts.contains(ext)) return FileCategory.video;
     if (_audioExts.contains(ext)) return FileCategory.audio;
-    if (_officeExts.contains(ext)) return FileCategory.office;
+    if (_wordExts.contains(ext)) return FileCategory.word;
+    if (_excelExts.contains(ext)) return FileCategory.excel;
+    if (_pptxExts.contains(ext)) return FileCategory.powerpoint;
     if (_archiveExts.contains(ext)) return FileCategory.archive;
     if (_textExts.contains(ext)) return FileCategory.text;
     if (_codeExts.contains(ext)) return FileCategory.code;
@@ -22,9 +24,11 @@ class FileTypeDetector {
       case FileCategory.image: return '🖼️';
       case FileCategory.video: return '🎬';
       case FileCategory.audio: return '🎵';
-      case FileCategory.office: return '📊';
+      case FileCategory.word: return '📝';
+      case FileCategory.excel: return '📊';
+      case FileCategory.powerpoint: return '🎭';
       case FileCategory.archive: return '📦';
-      case FileCategory.text: return '📝';
+      case FileCategory.text: return '🖋️';
       case FileCategory.code: return '💻';
       case FileCategory.ebook: return '📚';
       case FileCategory.unknown: return '📁';
@@ -55,13 +59,16 @@ class FileTypeDetector {
     'caf', 'w64', 'bwf', 'voc', 'spx', 'm3u', 'm3u8', 'pls', 'wpl',
   };
 
-  static const Set<String> _officeExts = {
-    // Word
+  static const Set<String> _wordExts = {
     'doc', 'docx', 'docm', 'dot', 'dotx', 'dotm', 'odt', 'ott', 'rtf',
     'wpd', 'wps', 'pages',
-    // Excel
+  };
+
+  static const Set<String> _excelExts = {
     'xls', 'xlsx', 'xlsm', 'xlsb', 'xlt', 'xltx', 'ods', 'csv', 'numbers',
-    // PowerPoint
+  };
+
+  static const Set<String> _pptxExts = {
     'ppt', 'pptx', 'pptm', 'pps', 'ppsx', 'pot', 'potx', 'odp', 'key',
   };
 
